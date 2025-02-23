@@ -4,9 +4,11 @@ pipeline {
     environment {
         JAVA_HOME = tool 'jdk-17'
         MAVEN_HOME = tool 'maven-3.9.9'
-	SONAR_HOST_URL = 'http://192.168.0.153:9000'
+	    SONAR_HOST_URL = 'http://192.168.0.153:9000'
         SONAR_PROJECT_KEY = 'spring-boot-jwt'
         SONAR_LOGIN = credentials('sonar-token')
+        DOCKER_CREDENTIALS_ID = 'docker-hub'
+        DOCKER_IMAGE = 'hamzaobey/spring-boot-jwt:0.0.1-SNAPSHOT'
     }
 
     stages {
@@ -41,7 +43,25 @@ pipeline {
                     """
                 }
             }
-	}
+	    }
+
+    stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${DOCKER_IMAGE} .'
+            }
+        }
+    
+    stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push "$DOCKER_IMAGE"
+                    '''
+                }
+            }
+        }
+
     }
 
     post {
